@@ -1,0 +1,20 @@
+# 核心依赖
+opencv-python>=4.8.0
+numpy>=1.24.0
+
+# 情绪识别模型 (二选一，或都装)
+# FER 库 (更快，推荐)
+fer>=20.1.0
+# 或 DeepFace (更准，但更慢)
+# deepface>=0.0.8
+
+# 可选: 更好的 MTCNN 人脸检测
+mtcnn>=0.1.0
+
+# API 服务 (如需启用)
+fastapi>=0.100.0
+uvicorn>=0.23.0
+python-multipart>=0.0.6
+
+# 工具
+pillow>=10.0.0
