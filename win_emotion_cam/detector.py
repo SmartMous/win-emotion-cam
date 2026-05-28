@@ -17,15 +17,15 @@ class EmotionDetector:
     def __init__(
         self,
         camera_index: int = 0,
-        model_backend: str = 'fer',
+        model_backend: str = 'hsemotion',
         fps_limit: int = 5
     ):
         """
         初始化情绪检测器
-        
+
         Args:
             camera_index: 摄像头索引
-            model_backend: 模型后端 ('fer' 或 'deepface')
+            model_backend: 模型后端 ('hsemotion')
             fps_limit: 限制检测帧率，避免过慢
         """
         self.camera = Camera(camera_index=camera_index)
@@ -119,38 +119,58 @@ class EmotionDetector:
                 if callback(frame, result):
                     break
             
-            # 检查退出键
+            # 检查退出键 或 窗口被用户点击 X 关闭
             key = cv2.waitKey(1) & 0xFF
-            if key == ord('q') or key == 27:  # 'q' 或 'Esc'
+            if key == ord('q') or key == 27:
+                break
+            # 窗口关闭检测（仅当窗口已存在且被关闭时）
+            prop = cv2.getWindowProperty('Emotion Camera', cv2.WND_PROP_VISIBLE)
+            if prop == 0:
                 break
         
         self.stop()
     
     def _draw_result(self, frame, result: Dict[str, Any]):
-        """在帧上绘制检测结果"""
-        import cv2
-        
-        # 获取结果文本
+        """在帧上绘制检测结果（使用 Pillow 支持中文）"""
+        from PIL import Image, ImageDraw, ImageFont
+        import numpy as np
+
+        _FONT_PATH = "C:/Windows/Fonts/simhei.ttf"
+        _FONT_SIZE = 28
+        _FONT_SMALL = 20
+
+        # OpenCV BGR -> Pillow RGBA（保留 alpha 通道用于透明背景）
+        img_rgb = frame[..., ::-1]
+        img = Image.fromarray(img_rgb).convert("RGBA")
+        overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        draw = ImageDraw.Draw(overlay)
+
+        try:
+            font = ImageFont.truetype(_FONT_PATH, _FONT_SIZE)
+            font_small = ImageFont.truetype(_FONT_PATH, _FONT_SMALL)
+        except OSError:
+            font = ImageFont.load_default()
+            font_small = font
+
         if result.get('face_detected'):
             emotion = result.get('emotion_cn', '未知')
             confidence = result.get('confidence', 0)
             tone = result.get('tone', '未知')
-            
+
             text = f"情绪: {emotion} ({confidence:.1%})"
             tone_text = f"建议语气: {tone}"
-            
-            # 绘制文本背景
-            h, w = frame.shape[:2]
-            
-            # 设置中文显示 (需要中文字体)
-            # 这里使用英文备选
-            cv2.putText(frame, text, (10, 30), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
-            cv2.putText(frame, tone_text, (10, 60),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+
+            # 半透明背景
+            draw.rectangle([(5, 5), (400, 70)], fill=(0, 0, 0, 160))
+            draw.text((12, 10), text, font=font, fill=(0, 255, 0, 255))
+            draw.text((12, 42), tone_text, font=font_small, fill=(0, 255, 255, 255))
         else:
-            cv2.putText(frame, "未检测到人脸", (10, 30),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+            draw.rectangle([(5, 5), (220, 40)], fill=(0, 0, 0, 160))
+            draw.text((12, 8), "未检测到人脸", font=font, fill=(255, 0, 0, 255))
+
+        # 合成 overlay 到原图，转回 OpenCV BGR
+        img = Image.alpha_composite(img, overlay).convert("RGB")
+        frame[:] = np.array(img)[..., ::-1]
     
     def stop(self):
         """停止检测器"""
@@ -162,7 +182,7 @@ class EmotionDetector:
 
 def create_detector(
     camera_index: int = 0,
-    model_backend: str = 'fer',
+    model_backend: str = 'hsemotion',
     fps_limit: int = 5
 ) -> EmotionDetector:
     """创建情绪检测器"""

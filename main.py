@@ -22,9 +22,9 @@ def main():
     parser.add_argument(
         '-m', '--model',
         type=str,
-        default='fer',
-        choices=['fer', 'deepface'],
-        help='使用的模型后端 (默认: fer)'
+        default='hsemotion',
+        choices=['hsemotion'],
+        help='使用的模型后端 (默认: hsemotion)'
     )
     parser.add_argument(
         '-f', '--fps',
